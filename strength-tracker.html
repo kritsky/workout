@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Силовые тренировки</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app" class="max-w-lg mx-auto p-4">
+        <h1 class="text-2xl font-bold text-center mb-4 text-gray-800">🏋️ Силовые</h1>
+        
+        <!-- Дата тренировки -->
+        <div class="bg-white rounded-lg shadow p-4 mb-4">
+            <div class="flex items-center gap-3">
+                <label class="text-gray-600">Дата:</label>
+                <input type="date" id="workoutDate" class="border rounded px-3 py-1 flex-1">
+                <button onclick="loadWorkout()" class="bg-gray-200 px-3 py-1 rounded text-sm">Загрузить</button>
+            </div>
+        </div>
+
+        <!-- Добавление упражнения -->
+        <div class="bg-white rounded-lg shadow p-4 mb-4">
+            <div class="flex gap-2 mb-3">
+                <select id="exercise" class="flex-1 border rounded px-3 py-2">
+                    <option value="">Выбрать упражнение</option>
+                    <optgroup label="Грудь">
+                        <option>Жим лёжа</option>
+                        <option>Жим гантелей</option>
+                        <option>Разводка</option>
+                        <option>Отжимания</option>
+                    </optgroup>
+                    <optgroup label="Спина">
+                        <option>Тяга штанги</option>
+                        <option>Тяга гантели</option>
+                        <option>Подтягивания</option>
+                        <option>Тяга верхнего блока</option>
+                    </optgroup>
+                    <optgroup label="Ноги">
+                        <option>Приседания</option>
+                        <option>Жим ногами</option>
+                        <option>Выпады</option>
+                        <option>Становая тяга</option>
+                    </optgroup>
+                    <optgroup label="Плечи">
+                        <option>Жим стоя</option>
+                        <option>Жим сидя</option>
+                        <option>Махи в стороны</option>
+                    </optgroup>
+                    <optgroup label="Руки">
+                        <option>Бицепс штанга</option>
+                        <option>Бицепс гантели</option>
+                        <option>Трицепс блок</option>
+                        <option>Французский жим</option>
+                    </optgroup>
+                </select>
+                <input type="text" id="customExercise" placeholder="Или своё" class="w-28 border rounded px-2 py-2 text-sm">
+            </div>
+            
+            <!-- Подходы -->
+            <div id="setsContainer" class="space-y-2 mb-3">
+                <div class="flex gap-2 items-center set-row">
+                    <span class="text-gray-400 text-sm w-6">1.</span>
+                    <input type="number" placeholder="Вес" class="set-weight w-20 border rounded px-2 py-1 text-center">
+                    <span class="text-gray-400">кг ×</span>
+                    <input type="number" placeholder="Раз" class="set-reps w-16 border rounded px-2 py-1 text-center">
+                </div>
+            </div>
+            
+            <div class="flex gap-2">
+                <button onclick="addSetRow()" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded text-sm hover:bg-gray-200">
+                    + Подход
+                </button>
+                <button onclick="saveExercise()" class="flex-1 bg-blue-500 text-white py-2 rounded font-medium hover:bg-blue-600">
+                    Сохранить
+                </button>
+            </div>
+        </div>
+
+        <!-- Текущая тренировка -->
+        <div class="bg-white rounded-lg shadow mb-4">
+            <div class="p-3 border-b flex justify-between items-center">
+                <span class="font-medium text-gray-700">Тренировка</span>
+                <span id="totalVolume" class="text-sm text-gray-500"></span>
+            </div>
+            <div id="currentWorkout" class="divide-y">
+                <p class="p-4 text-gray-400 text-center text-sm">Добавьте упражнение</p>
+            </div>
+        </div>
+
+        <!-- История -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-3 border-b flex justify-between items-center">
+                <span class="font-medium text-gray-700">История</span>
+                <button onclick="toggleHistory()" id="historyToggle" class="text-sm text-blue-500">Показать</button>
+            </div>
+            <div id="history" class="hidden divide-y max-h-96 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <script>
+        let workouts = JSON.parse(localStorage.getItem('strengthWorkouts') || '{}');
+        let currentExercises = [];
+
+        document.getElementById('workoutDate').valueAsDate = new Date();
+
+        function getDateKey() {
+            return document.getElementById('workoutDate').value;
+        }
+
+        function addSetRow() {
+            const container = document.getElementById('setsContainer');
+            const num = container.children.length + 1;
+            const lastRow = container.lastElementChild;
+            const lastWeight = lastRow?.querySelector('.set-weight')?.value || '';
+            
+            const row = document.createElement('div');
+            row.className = 'flex gap-2 items-center set-row';
+            row.innerHTML = `
+                <span class="text-gray-400 text-sm w-6">${num}.</span>
+                <input type="number" placeholder="Вес" value="${lastWeight}" class="set-weight w-20 border rounded px-2 py-1 text-center">
+                <span class="text-gray-400">кг ×</span>
+                <input type="number" placeholder="Раз" class="set-reps w-16 border rounded px-2 py-1 text-center">
+                <button onclick="this.parentElement.remove(); renumberSets()" class="text-gray-300 hover:text-red-500">✕</button>
+            `;
+            container.appendChild(row);
+        }
+
+        function renumberSets() {
+            const rows = document.querySelectorAll('.set-row');
+            rows.forEach((row, i) => {
+                row.querySelector('span').textContent = (i + 1) + '.';
+            });
+        }
+
+        function saveExercise() {
+            const exercise = document.getElementById('customExercise').value || document.getElementById('exercise').value;
+            if (!exercise) {
+                alert('Выберите упражнение');
+                return;
+            }
+
+            const rows = document.querySelectorAll('.set-row');
+            const sets = [];
+            rows.forEach(row => {
+                const weight = parseFloat(row.querySelector('.set-weight').value) || 0;
+                const reps = parseInt(row.querySelector('.set-reps').value) || 0;
+                if (reps > 0) {
+                    sets.push({ weight, reps });
+                }
+            });
+
+            if (sets.length === 0) {
+                alert('Добавьте хотя бы один подход');
+                return;
+            }
+
+            currentExercises.push({ exercise, sets });
+            
+            // Сохранить в localStorage
+            const dateKey = getDateKey();
+            workouts[dateKey] = currentExercises;
+            localStorage.setItem('strengthWorkouts', JSON.stringify(workouts));
+
+            // Очистить форму
+            document.getElementById('exercise').value = '';
+            document.getElementById('customExercise').value = '';
+            document.getElementById('setsContainer').innerHTML = `
+                <div class="flex gap-2 items-center set-row">
+                    <span class="text-gray-400 text-sm w-6">1.</span>
+                    <input type="number" placeholder="Вес" class="set-weight w-20 border rounded px-2 py-1 text-center">
+                    <span class="text-gray-400">кг ×</span>
+                    <input type="number" placeholder="Раз" class="set-reps w-16 border rounded px-2 py-1 text-center">
+                </div>
+            `;
+
+            renderCurrentWorkout();
+            renderHistory();
+        }
+
+        function loadWorkout() {
+            const dateKey = getDateKey();
+            currentExercises = workouts[dateKey] || [];
+            renderCurrentWorkout();
+        }
+
+        function deleteExercise(index) {
+            currentExercises.splice(index, 1);
+            const dateKey = getDateKey();
+            if (currentExercises.length > 0) {
+                workouts[dateKey] = currentExercises;
+            } else {
+                delete workouts[dateKey];
+            }
+            localStorage.setItem('strengthWorkouts', JSON.stringify(workouts));
+            renderCurrentWorkout();
+            renderHistory();
+        }
+
+        function renderCurrentWorkout() {
+            const container = document.getElementById('currentWorkout');
+            const volumeEl = document.getElementById('totalVolume');
+            
+            if (currentExercises.length === 0) {
+                container.innerHTML = '<p class="p-4 text-gray-400 text-center text-sm">Добавьте упражнение</p>';
+                volumeEl.textContent = '';
+                return;
+            }
+
+            let totalVolume = 0;
+            container.innerHTML = currentExercises.map((ex, i) => {
+                const setsStr = ex.sets.map(s => {
+                    totalVolume += s.weight * s.reps;
+                    return `${s.weight}×${s.reps}`;
+                }).join(', ');
+                
+                return `
+                    <div class="p-3 flex justify-between items-start hover:bg-gray-50">
+                        <div>
+                            <div class="font-medium text-gray-800">${ex.exercise}</div>
+                            <div class="text-sm text-gray-500">${setsStr}</div>
+                        </div>
+                        <button onclick="deleteExercise(${i})" class="text-gray-300 hover:text-red-500">✕</button>
+                    </div>
+                `;
+            }).join('');
+
+            volumeEl.textContent = `Объём: ${totalVolume.toLocaleString()} кг`;
+        }
+
+        function toggleHistory() {
+            const el = document.getElementById('history');
+            const btn = document.getElementById('historyToggle');
+            el.classList.toggle('hidden');
+            btn.textContent = el.classList.contains('hidden') ? 'Показать' : 'Скрыть';
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history');
+            const dates = Object.keys(workouts).sort().reverse();
+            
+            if (dates.length === 0) {
+                container.innerHTML = '<p class="p-4 text-gray-400 text-center text-sm">Пусто</p>';
+                return;
+            }
+
+            container.innerHTML = dates.map(date => {
+                const exercises = workouts[date];
+                const d = new Date(date);
+                const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+                const dateStr = `${days[d.getDay()]}, ${d.getDate()}.${(d.getMonth()+1).toString().padStart(2,'0')}`;
+                
+                const exercisesList = exercises.map(ex => {
+                    const best = ex.sets.reduce((max, s) => s.weight > max.weight ? s : max, {weight: 0});
+                    return `${ex.exercise} (${best.weight}×${best.reps})`;
+                }).join(', ');
+
+                return `
+                    <div class="p-3 cursor-pointer hover:bg-gray-50" onclick="document.getElementById('workoutDate').value='${date}'; loadWorkout();">
+                        <div class="font-medium text-gray-700">${dateStr}</div>
+                        <div class="text-sm text-gray-500 truncate">${exercisesList}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Инициализация
+        loadWorkout();
+        renderHistory();
+    </script>
+</body>
+</html>
