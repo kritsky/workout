@@ -267,6 +267,28 @@
             }).join('');
         }
 
+        // Начальные данные (первые тренировки)
+        const initialData = {
+            "2025-11-23": [
+                { exercise: "Жим гантелей под углом 45°", sets: [{weight: 7.5, reps: 12}, {weight: 10, reps: 12}, {weight: 12.5, reps: 12}, {weight: 15, reps: 12}] },
+                { exercise: "Жим лёжа", sets: [{weight: 40, reps: 12}, {weight: 45, reps: 12}, {weight: 50, reps: 7}, {weight: 50, reps: 7}] },
+                { exercise: "Разгибание рук в блоке (трицепс)", sets: [{weight: 25, reps: 12}, {weight: 30, reps: 12}, {weight: 35, reps: 12}, {weight: 40, reps: 12}] }
+            ],
+            "2025-11-24": [
+                { exercise: "Вертикальная тяга блока к груди", sets: [{weight: 25, reps: 12}, {weight: 30, reps: 12}, {weight: 35, reps: 12}, {weight: 40, reps: 12}] },
+                { exercise: "Горизонтальная тяга блока к поясу", sets: [{weight: 25, reps: 12}, {weight: 30, reps: 12}, {weight: 35, reps: 12}, {weight: 40, reps: 12}] },
+                { exercise: "Жим гантелей на плечи", sets: [{weight: 7.5, reps: 12}, {weight: 10, reps: 12}, {weight: 10, reps: 12}] }
+            ]
+        };
+
+        // Добавить начальные данные, если их ещё нет
+        for (const [date, exercises] of Object.entries(initialData)) {
+            if (!workouts[date]) {
+                workouts[date] = exercises;
+            }
+        }
+        localStorage.setItem('strengthWorkouts', JSON.stringify(workouts));
+
         // Инициализация
         loadWorkout();
         renderHistory();
