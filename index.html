@@ -104,11 +104,10 @@
 
         <!-- История -->
         <div class="bg-white rounded-lg shadow">
-            <div class="p-3 border-b flex justify-between items-center">
+            <div class="p-3 border-b">
                 <span class="font-medium text-gray-700">История</span>
-                <button onclick="toggleHistory()" id="historyToggle" class="text-sm text-blue-500">Показать</button>
             </div>
-            <div id="history" class="hidden divide-y max-h-96 overflow-y-auto"></div>
+            <div id="history" class="divide-y max-h-96 overflow-y-auto"></div>
         </div>
     </div>
 
@@ -306,13 +305,6 @@
             }).join('');
 
             volumeEl.textContent = `Объём: ${totalVolume.toLocaleString()} кг`;
-        }
-
-        function toggleHistory() {
-            const el = document.getElementById('history');
-            const btn = document.getElementById('historyToggle');
-            el.classList.toggle('hidden');
-            btn.textContent = el.classList.contains('hidden') ? 'Показать' : 'Скрыть';
         }
 
         function renderVolumeChart() {
