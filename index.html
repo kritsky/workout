@@ -74,8 +74,11 @@
                 <button onclick="addSetRow()" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded text-sm hover:bg-gray-200">
                     + Подход
                 </button>
-                <button onclick="saveExercise()" class="flex-1 bg-blue-500 text-white py-2 rounded font-medium hover:bg-blue-600">
+                <button onclick="saveExercise()" id="saveBtn" class="flex-1 bg-blue-500 text-white py-2 rounded font-medium hover:bg-blue-600">
                     Сохранить
+                </button>
+                <button onclick="cancelEdit()" id="cancelBtn" class="hidden bg-gray-300 text-gray-700 py-2 px-3 rounded font-medium hover:bg-gray-400">
+                    ✕
                 </button>
             </div>
         </div>
@@ -91,19 +94,27 @@
             </div>
         </div>
 
+        <!-- График объёма -->
+        <div class="bg-white rounded-lg shadow mb-4">
+            <div class="p-3 border-b">
+                <span class="font-medium text-gray-700">Объём по дням</span>
+            </div>
+            <div id="volumeChart" class="p-3 flex items-end gap-1 h-32 overflow-x-auto"></div>
+        </div>
+
         <!-- История -->
         <div class="bg-white rounded-lg shadow">
-            <div class="p-3 border-b flex justify-between items-center">
+            <div class="p-3 border-b">
                 <span class="font-medium text-gray-700">История</span>
-                <button onclick="toggleHistory()" id="historyToggle" class="text-sm text-blue-500">Показать</button>
             </div>
-            <div id="history" class="hidden divide-y max-h-96 overflow-y-auto"></div>
+            <div id="history" class="divide-y max-h-96 overflow-y-auto"></div>
         </div>
     </div>
 
     <script>
         let workouts = JSON.parse(localStorage.getItem('strengthWorkouts') || '{}');
         let currentExercises = [];
+        let editingIndex = null; // Индекс редактируемого упражнения
 
         document.getElementById('workoutDate').valueAsDate = new Date();
 
@@ -136,6 +147,60 @@
             });
         }
 
+        function editExercise(index) {
+            const ex = currentExercises[index];
+            editingIndex = index;
+
+            // Заполнить название упражнения
+            const exerciseSelect = document.getElementById('exercise');
+            const customInput = document.getElementById('customExercise');
+
+            // Проверить, есть ли упражнение в списке
+            const options = Array.from(exerciseSelect.options).map(o => o.value);
+            if (options.includes(ex.exercise)) {
+                exerciseSelect.value = ex.exercise;
+                customInput.value = '';
+            } else {
+                exerciseSelect.value = '';
+                customInput.value = ex.exercise;
+            }
+
+            // Заполнить подходы
+            const container = document.getElementById('setsContainer');
+            container.innerHTML = ex.sets.map((s, i) => `
+                <div class="flex gap-2 items-center set-row">
+                    <span class="text-gray-400 text-sm w-6">${i + 1}.</span>
+                    <input type="number" placeholder="Вес" value="${s.weight}" class="set-weight w-20 border rounded px-2 py-1 text-center">
+                    <span class="text-gray-400">кг ×</span>
+                    <input type="number" placeholder="Раз" value="${s.reps}" class="set-reps w-16 border rounded px-2 py-1 text-center">
+                    ${i > 0 ? '<button onclick="this.parentElement.remove(); renumberSets()" class="text-gray-300 hover:text-red-500">✕</button>' : ''}
+                </div>
+            `).join('');
+
+            // Показать режим редактирования
+            document.getElementById('saveBtn').textContent = 'Обновить';
+            document.getElementById('cancelBtn').classList.remove('hidden');
+
+            // Прокрутить к форме
+            document.getElementById('exercise').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function cancelEdit() {
+            editingIndex = null;
+            document.getElementById('exercise').value = '';
+            document.getElementById('customExercise').value = '';
+            document.getElementById('setsContainer').innerHTML = `
+                <div class="flex gap-2 items-center set-row">
+                    <span class="text-gray-400 text-sm w-6">1.</span>
+                    <input type="number" placeholder="Вес" class="set-weight w-20 border rounded px-2 py-1 text-center">
+                    <span class="text-gray-400">кг ×</span>
+                    <input type="number" placeholder="Раз" class="set-reps w-16 border rounded px-2 py-1 text-center">
+                </div>
+            `;
+            document.getElementById('saveBtn').textContent = 'Сохранить';
+            document.getElementById('cancelBtn').classList.add('hidden');
+        }
+
         function saveExercise() {
             const exercise = document.getElementById('customExercise').value || document.getElementById('exercise').value;
             if (!exercise) {
@@ -158,7 +223,16 @@
                 return;
             }
 
-            currentExercises.push({ exercise, sets });
+            if (editingIndex !== null) {
+                // Обновить существующее упражнение
+                currentExercises[editingIndex] = { exercise, sets };
+                editingIndex = null;
+                document.getElementById('saveBtn').textContent = 'Сохранить';
+                document.getElementById('cancelBtn').classList.add('hidden');
+            } else {
+                // Добавить новое упражнение
+                currentExercises.push({ exercise, sets });
+            }
             
             // Сохранить в localStorage
             const dateKey = getDateKey();
@@ -179,6 +253,7 @@
 
             renderCurrentWorkout();
             renderHistory();
+            renderVolumeChart();
         }
 
         function loadWorkout() {
@@ -198,6 +273,7 @@
             localStorage.setItem('strengthWorkouts', JSON.stringify(workouts));
             renderCurrentWorkout();
             renderHistory();
+            renderVolumeChart();
         }
 
         function renderCurrentWorkout() {
@@ -216,14 +292,14 @@
                     totalVolume += s.weight * s.reps;
                     return `${s.weight}×${s.reps}`;
                 }).join(', ');
-                
+
                 return `
-                    <div class="p-3 flex justify-between items-start hover:bg-gray-50">
+                    <div class="p-3 flex justify-between items-start hover:bg-gray-50 cursor-pointer" onclick="editExercise(${i})">
                         <div>
                             <div class="font-medium text-gray-800">${ex.exercise}</div>
                             <div class="text-sm text-gray-500">${setsStr}</div>
                         </div>
-                        <button onclick="deleteExercise(${i})" class="text-gray-300 hover:text-red-500">✕</button>
+                        <button onclick="event.stopPropagation(); deleteExercise(${i})" class="text-gray-300 hover:text-red-500">✕</button>
                     </div>
                 `;
             }).join('');
@@ -231,11 +307,47 @@
             volumeEl.textContent = `Объём: ${totalVolume.toLocaleString()} кг`;
         }
 
-        function toggleHistory() {
-            const el = document.getElementById('history');
-            const btn = document.getElementById('historyToggle');
-            el.classList.toggle('hidden');
-            btn.textContent = el.classList.contains('hidden') ? 'Показать' : 'Скрыть';
+        function renderVolumeChart() {
+            const container = document.getElementById('volumeChart');
+            const dates = Object.keys(workouts).sort();
+
+            if (dates.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-sm w-full text-center">Нет данных</p>';
+                return;
+            }
+
+            // Посчитать объём для каждого дня
+            const volumes = dates.map(date => {
+                const exercises = workouts[date];
+                let total = 0;
+                exercises.forEach(ex => {
+                    ex.sets.forEach(s => {
+                        total += s.weight * s.reps;
+                    });
+                });
+                return { date, total };
+            });
+
+            const maxVolume = Math.max(...volumes.map(v => v.total));
+            const minVolume = Math.min(...volumes.map(v => v.total));
+
+            container.innerHTML = volumes.map(v => {
+                const heightPercent = maxVolume > 0 ? (v.total / maxVolume) * 100 : 0;
+                // Opacity от 0.5 до 1 в зависимости от значения
+                const opacity = minVolume === maxVolume ? 1 : 0.5 + 0.5 * ((v.total - minVolume) / (maxVolume - minVolume));
+                const d = new Date(v.date);
+                const dayStr = `${d.getDate()}.${(d.getMonth()+1).toString().padStart(2,'0')}`;
+
+                return `
+                    <div class="flex flex-col items-center flex-shrink-0" style="min-width: 36px;">
+                        <div class="text-xs text-gray-500 mb-1">${v.total >= 1000 ? Math.round(v.total/1000) + 'k' : v.total}</div>
+                        <div class="w-6 bg-blue-500 rounded-t cursor-pointer hover:bg-blue-600"
+                             style="height: ${Math.max(heightPercent, 5)}%; opacity: ${opacity.toFixed(2)};"
+                             onclick="document.getElementById('workoutDate').value='${v.date}'; loadWorkout();"></div>
+                        <div class="text-xs text-gray-400 mt-1">${dayStr}</div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function renderHistory() {
@@ -292,6 +404,7 @@
         // Инициализация
         loadWorkout();
         renderHistory();
+        renderVolumeChart();
     </script>
 </body>
 </html>
